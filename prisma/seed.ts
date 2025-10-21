@@ -61,7 +61,7 @@ async function main() {
     "Umm Salal",
     "Al Khor",
     "Al Dayeen",
-    "Madīnat ash Shamāl",
+    "Madinat ash Shamal",
     "Mesaieed",
     "Lusail",
     "Al Shahaniya",
@@ -147,7 +147,18 @@ async function main() {
     }),
   );
 
-  const workOrderDefinitions = [
+  const workOrderDefinitions: Array<{
+    customer: (typeof customers)[number];
+    branch: (typeof branches)[number];
+    fabric: (typeof fabrics)[number];
+    profile: (typeof measurementProfiles)[number];
+    dueInDays: number;
+    status: Status;
+    stageHistory: Stage[];
+    deposit: number;
+    total: number;
+    priority: Priority;
+  }> = [
     {
       customer: customers[0],
       branch: branches[0],
@@ -187,7 +198,7 @@ async function main() {
       total: 390,
       priority: Priority.LOW,
     },
-  ] as const;
+  ];
 
   const workOrders = [];
 
