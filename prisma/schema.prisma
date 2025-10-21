@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GarmentType {
+  THAWB
+  BISHT
+  SHIRT
+  TROUSER
+}
+
+enum Stage {
+  CUTTING
+  SEWING
+  EMBROIDERY
+  PRESSING
+  QC
+  DISPATCHED
+  AT_BRANCH
+  FITTING
+  ALTERATION
+}
+
+enum Status {
+  NEW
+  CONFIRMED
+  CUTTING
+  SEWING
+  EMBROIDERY
+  PRESSING
+  QC
+  DISPATCHED
+  AT_BRANCH
+  FITTING
+  ALTERATION
+  READY_FOR_PICKUP
+  DELIVERED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum ShipmentDirection {
+  OUT
+  IN
+}
+
+model Branch {
+  id        String     @id @default(cuid())
+  name      String
+  area      String
+  customers Customer[] @relation("BranchCustomers")
+  workOrders WorkOrder[]
+  shipmentsFrom Shipment[] @relation("ShipmentFrom")
+  shipmentsTo   Shipment[] @relation("ShipmentTo")
+  defaultCustomers Customer[] @relation("CustomerDefaultBranch")
+
+  @@unique([name])
+}
+
+model Customer {
+  id               String              @id @default(cuid())
+  name             String
+  phone            String              @unique
+  altPhone         String?
+  preferredLang    String?
+  defaultBranchId  String?
+  defaultBranch    Branch?             @relation("CustomerDefaultBranch", fields: [defaultBranchId], references: [id])
+  branchId         String?
+  branch           Branch?             @relation("BranchCustomers", fields: [branchId], references: [id])
+  measurementProfiles MeasurementProfile[]
+  workOrders       WorkOrder[]
+
+  @@index([branchId])
+  @@index([name])
+}
+
+model MeasurementProfile {
+  id              String       @id @default(cuid())
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  garmentType     GarmentType
+  version         Int          @default(1)
+  unit            String
+  dataJson        Json
+  takenByName     String
+  takenAt         DateTime     @default(now())
+  workOrderItems  WorkOrderItem[]
+
+  @@index([customerId, garmentType])
+}
+
+model Fabric {
+  id         String   @id @default(cuid())
+  sku        String   @unique
+  name       String
+  color      String
+  composition String
+  widthCm    Int
+  stockQty   Int        @default(0)
+  price      Decimal    @db.Decimal(10, 2)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  workOrderItems WorkOrderItem[]
+}
+
+model WorkOrder {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  customerId  String
+  branchId    String
+  dueDate     DateTime
+  status      Status       @default(NEW)
+  priority    Priority     @default(NORMAL)
+  notes       String?
+  total       Decimal      @db.Decimal(10, 2)
+  deposit     Decimal      @db.Decimal(10, 2)
+  balance     Decimal      @db.Decimal(10, 2)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  items       WorkOrderItem[]
+  payments    Payment[]
+  shipmentScans ShipmentScan[]
+
+  @@index([branchId, status])
+  @@index([customerId, createdAt])
+  @@index([dueDate])
+}
+
+model WorkOrderItem {
+  id                    String            @id @default(cuid())
+  workOrderId           String
+  garmentType           GarmentType
+  measurementProfileId  String?
+  fabricId              String?
+  optionsJson           Json?
+  price                 Decimal           @db.Decimal(10, 2)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  workOrder             WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  measurementProfile    MeasurementProfile? @relation(fields: [measurementProfileId], references: [id], onDelete: SetNull)
+  fabric                Fabric?           @relation(fields: [fabricId], references: [id], onDelete: SetNull)
+  productionTasks       ProductionTask[]
+
+  @@index([workOrderId])
+}
+
+model ProductionTask {
+  id               String      @id @default(cuid())
+  workOrderItemId  String
+  stage            Stage
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  notes            String?
+  workOrderItem    WorkOrderItem @relation(fields: [workOrderItemId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderItemId, stage])
+}
+
+model Shipment {
+  id            String          @id @default(cuid())
+  date          DateTime        @default(now())
+  fromBranchId  String
+  toBranchId    String
+  notes         String?
+  fromBranch    Branch          @relation("ShipmentFrom", fields: [fromBranchId], references: [id], onDelete: Restrict)
+  toBranch      Branch          @relation("ShipmentTo", fields: [toBranchId], references: [id], onDelete: Restrict)
+  scans         ShipmentScan[]
+
+  @@index([fromBranchId, toBranchId])
+}
+
+model ShipmentScan {
+  id             String            @id @default(cuid())
+  shipmentId     String
+  workOrderId    String
+  direction      ShipmentDirection
+  scannedByName  String
+  scannedAt      DateTime          @default(now())
+  shipment       Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  workOrder      WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([workOrderId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  workOrderId String
+  amount      Decimal       @db.Decimal(10, 2)
+  method      PaymentMethod
+  txnRef      String?
+  createdAt   DateTime      @default(now())
+  workOrder   WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+}
