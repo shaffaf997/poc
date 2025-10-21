@@ -12,12 +12,14 @@ import { AdvanceStage } from "./stage-controls";
 import { AddPayment } from "./stage-controls";
 
 type WorkOrderPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function WorkOrderDetailPage({ params }: WorkOrderPageProps) {
+  const { id } = await params;
+
   const workOrder = await prisma.workOrder.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       customer: true,
       branch: true,
