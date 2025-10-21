@@ -3,12 +3,11 @@ import { prisma } from "@/lib/db";
 import { paymentFormSchema } from "@/lib/validations";
 import { Prisma } from "@prisma/client";
 
-type RouteContext = {
-  params: { id: string };
-};
-
-export async function POST(request: Request, { params }: RouteContext) {
-  const { id } = params;
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
   const json = await request.json();
   const parsed = paymentFormSchema.safeParse(json);
 
