@@ -2,10 +2,12 @@ import { prisma } from "@/lib/db";
 import { WorkOrderWizard } from "./work-order-wizard";
 
 type NewWorkOrderPageProps = {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function NewWorkOrderPage({ searchParams }: NewWorkOrderPageProps) {
+  const params = await searchParams;
+
   const [customers, measurementProfiles, fabrics, branches] = await Promise.all([
     prisma.customer.findMany({
       orderBy: { name: "asc" },
@@ -47,8 +49,8 @@ export default async function NewWorkOrderPage({ searchParams }: NewWorkOrderPag
         area: branch.area,
       }))}
       defaults={{
-        customerId: typeof searchParams.customerId === "string" ? searchParams.customerId : "",
-        measurementProfileId: typeof searchParams.measurementId === "string" ? searchParams.measurementId : "",
+        customerId: typeof params.customerId === "string" ? params.customerId : "",
+        measurementProfileId: typeof params.measurementId === "string" ? params.measurementId : "",
       }}
     />
   );
